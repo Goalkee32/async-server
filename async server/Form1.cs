@@ -40,35 +40,55 @@ namespace async_server
             StartReceving();
             
         }
-        public async void StartReceving()
+
+        public async Task StartReceving()
         {
-            try
-            {
-                client = await listener.AcceptTcpClientAsync();
-            }
-            catch( Exception error)
-            {
-                MessageBox.Show(error.Message, Text);
-                return;
-            }
-            StartReading(client);
+                while (true)
+                {
+                    client = await listener.AcceptTcpClientAsync();
+                    HandleClient(client);
+                }
         }
 
-        public async void StartReading( TcpClient k )
+        private async void HandleClient(TcpClient client)
         {
-            byte[] buff = new byte[1024];
+            byte[] buffer = new byte[1024];
+            int n;
+
+            try
+            {
+                while ((n = await client.GetStream().ReadAsync(buffer, 0, buffer.Length)) != 0)
+                {
+                    string message = Encoding.Unicode.GetString(buffer, 0, n);
+                    LogMessage(message);
+                }
+            }
+            catch (Exception error) { MessageBox.Show(error.Message, Text); }
+            client.Close();
+        }
+
+        private void LogMessage(string message) 
+        {
+            if (textBox1.InvokeRequired)
+            {
+                textBox1.Invoke(new MethodInvoker(delegate { textBox1.AppendText(message + Environment.NewLine); }));
+            }
+            else 
+            {
+                textBox1.AppendText(message + Environment.NewLine);
+            }
+        }
+
+        public async void StartReading(TcpClient k)
+        {
+            byte[] buffer = new byte[1024];
             int n = 0;
             try
             {
-                n = await k.GetStream().ReadAsync(buff, 0, buff.Length);
+                n = await k.GetStream().ReadAsync(buffer, 0, buffer.Length);
             }
-            catch(Exception error) 
-            { 
-                MessageBox.Show(error.Message, Text);
-            }
-
-            textBox1.AppendText(Encoding.Unicode.GetString(buff, 0, n));
-            textBox1.AppendText(Environment.NewLine);
+            catch (Exception error) { MessageBox.Show(error.Message, Text); return; }
+            textBox1.AppendText(Encoding.Unicode.GetString(buffer, 0, n));
 
             StartReading(k);
         }
